@@ -30,7 +30,7 @@ jobs:
           $Env:PATH += ";C:\Program Files\nodejs"
           echo "New PATH: $Env:PATH"
           npm --version
-        shell: pwsh
+        shell: powershell
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
