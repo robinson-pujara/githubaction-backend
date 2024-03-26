@@ -46,7 +46,7 @@ jobs:
           }
           
           # Push using PAT for authentication
-          $repoUrl = "https://x-access-token:${{ secrets.PAT }}@github.com/robinson-pujara/githubaction-backend.git"
+          $repoUrl = "https://x-access-token:${{ secrets.PAT }}@github.com/robinson-pujara/githubaction-backend"
           git remote set-url origin $repoUrl
           git push origin main
         shell: powershell
