@@ -18,7 +18,7 @@ jobs:
         uses: actions/setup-node@v2
         with:
           node-version: '20.11.1'
-          
+
       - name: Manual Version Bump and Tag
         run: |
           $npmPath = "C:\Program Files\nodejs\npm.cmd"
@@ -29,7 +29,13 @@ jobs:
           git add package.json
           git commit -m "chore(release): bump version to $newVersion [skip ci]"
           git tag "v$newVersion"
-          git push && git push --tags
+          try {
+            git push
+            git push --tags
+          } catch {
+            Write-Error "Git push failed"
+            exit 1
+          }
         shell: powershell
 
       - name: Set up Docker Buildx
@@ -60,3 +66,4 @@ jobs:
           elif [ "$ENVIRONMENT" == "dev" ]; then
             docker tag $DOCKER_IMAGE:$ENVIRONMENT-$VERSION-$GIT_COMMIT_HASH $DOCKER_IMAGE:dev
             docker push $DOCKER_IMAGE:dev
+        shell: bash # Ensure to use bash or the appropriate shell for Docker commands if different from PowerShell.
