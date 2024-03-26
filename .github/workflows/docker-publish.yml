@@ -42,12 +42,20 @@ jobs:
           git add package.json
           git commit -m "chore(release): bump version to $newVersion [skip ci]"
           
-          # Create and push a new tag
-          git tag $newVersion
-          $repoToken = "${{ secrets.PAT }}"
-          git remote set-url origin https://x-access-token:$repoToken@github.com/your-username/your-repository.git
+          # Check if the tag already exists
+          $tagExists = git tag -l "$newVersion"
+          if (-not $tagExists) {
+            git tag $newVersion
+            git push origin $newVersion
+          } else {
+            Write-Output "Tag $newVersion already exists. Skipping tag creation."
+          }
+          
+          # Push changes using PAT
+          $repoUrl = "https://x-access-token:${{ secrets.PAT }}@github.com/robinson-pujara/githubaction-backend.git"
+          git remote set-url origin $repoUrl
           git push origin main
-          git push origin $newVersion
+          
         shell: powershell
         env:
           PAT: ${{ secrets.PAT }}
@@ -63,7 +71,7 @@ jobs:
 
       - name: Build and Push Docker Image
         run: |
-          DOCKER_IMAGE= robin/githubAction-test
+          DOCKER_IMAGE=robin/githubAction-test
           VERSION=$(npm version --silent)
           GIT_COMMIT_HASH=$(git rev-parse --short HEAD)
           ENVIRONMENT="dev"
