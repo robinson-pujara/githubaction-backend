@@ -13,7 +13,7 @@ jobs:
     steps:
       - name: Check out the repo
         uses: actions/checkout@v2
-      
+
       - name: Set up Node.js
         uses: actions/setup-node@v2
         with:
@@ -21,41 +21,34 @@ jobs:
 
       - name: Bump version, Tag, and Push
         run: |
-          # Setup npm and git configurations
+          # Set npm and git configurations
           $npmPath = "C:\Program Files\nodejs\npm.cmd"
           git config user.name "github-actions[bot]"
           git config user.email "robinsonpujara@gmail.com"
           
-          # Bump version and directly capture the new version string
+          # Bump the version
           $newVersion = & $npmPath version patch --no-git-tag-version
-          $newVersion = $newVersion.Trim()
           
-          # Ensure version string starts with 'v'
-          if (-not $newVersion.StartsWith("v")) {
-            $newVersion = "v$newVersion"
-          }
+          # Ensure correct version format for tagging
+          $newVersion = $newVersion -replace '^.*?(\d+\.\d+\.\d+).*$', 'v$1'
+          Write-Host "New version: $newVersion"
           
-          # Debug output
-          Write-Output "New version: $newVersion"
-          
-          # Commit version bump
+          # Commit the version bump
           git add package.json
           git commit -m "chore(release): bump version to $newVersion [skip ci]"
           
-          # Check if the tag already exists
-          $tagExists = git tag -l "$newVersion"
-          if (-not $tagExists) {
+          # Tagging
+          if (!(git tag -l | Select-String -Pattern "^$newVersion$")) {
             git tag $newVersion
             git push origin $newVersion
           } else {
-            Write-Output "Tag $newVersion already exists. Skipping tag creation."
+            Write-Host "Tag $newVersion already exists."
           }
           
-          # Push changes using PAT
+          # Push using PAT for authentication
           $repoUrl = "https://x-access-token:${{ secrets.PAT }}@github.com/robinson-pujara/githubaction-backend.git"
           git remote set-url origin $repoUrl
           git push origin main
-          
         shell: powershell
         env:
           PAT: ${{ secrets.PAT }}
