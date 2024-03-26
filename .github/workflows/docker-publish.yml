@@ -27,7 +27,7 @@ jobs:
         id: bump_version
         uses: phips28/gh-action-bump-version@master
         with:
-          minor: true # Adjust this based on your versioning strategy (major, minor, patch)
+          version-type: minor
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
