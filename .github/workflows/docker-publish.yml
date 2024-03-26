@@ -21,14 +21,20 @@ jobs:
 
       - name: Bump version, Tag, and Push
         run: |
-          # Set npm and git configuration
+          # Setup npm and git configurations
           $npmPath = "C:\Program Files\nodejs\npm.cmd"
           git config user.name "github-actions[bot]"
-          git config user.email "your-email@example.com"
+          git config user.email "robinsonpujar@gmail.com"
           
-          # Bump version without auto git tag
-          & $npmPath version patch --no-git-tag-version
-          $newVersion = & $npmPath version --silent
+          # Bump version and capture the new version number
+          $versionOutput = & $npmPath version patch
+          $versionRegex = '^\s*[\w-]+:\s*''(\d+\.\d+\.\d+)'''
+          if ($versionOutput -match $versionRegex) {
+            $newVersion = $matches[1]
+          } else {
+            Write-Error "Failed to extract version number from npm version output"
+            exit 1
+          }
           
           # Commit version bump
           git add package.json
@@ -39,8 +45,8 @@ jobs:
           git tag $tagName
           
           # Push changes using PAT
-          $repoURL = "https://x-access-token:${{ secrets.PAT }}@github.com/robinson-pujara/githubaction-backend.git"
-          git remote set-url origin $repoURL
+          $repoToken = "${{ secrets.PAT }}"
+          git remote set-url origin https://x-access-token:$repoToken@github.com/robinson-pujara/githubaction-backend.git
           git push origin main
           git push origin $tagName
         shell: powershell
