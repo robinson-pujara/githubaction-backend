@@ -22,7 +22,7 @@ jobs:
       - name: Test npm access
         run: |
           echo "Testing npm access..."
-          "C:\Program Files\nodejs\npm.cmd" --version
+          & "C:\Program Files\nodejs\npm.cmd" --version
         shell: powershell
 
       - name: Set PATH and Verify npm
