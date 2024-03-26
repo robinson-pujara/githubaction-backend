@@ -24,31 +24,30 @@ jobs:
           # Setup npm and git configurations
           $npmPath = "C:\Program Files\nodejs\npm.cmd"
           git config user.name "github-actions[bot]"
-          git config user.email "robinsonpujar@gmail.com"
+          git config user.email "robinsonpujara@gmail.com"
           
-          # Bump version and capture the new version number
-          $versionOutput = & $npmPath version patch
-          $versionRegex = '^\s*[\w-]+:\s*''(\d+\.\d+\.\d+)'''
-          if ($versionOutput -match $versionRegex) {
-            $newVersion = $matches[1]
-          } else {
-            Write-Error "Failed to extract version number from npm version output"
-            exit 1
+          # Bump version and directly capture the new version string
+          $newVersion = & $npmPath version patch --no-git-tag-version
+          $newVersion = $newVersion.Trim()
+          
+          # Ensure version string starts with 'v'
+          if (-not $newVersion.StartsWith("v")) {
+            $newVersion = "v$newVersion"
           }
+          
+          # Debug output
+          Write-Output "New version: $newVersion"
           
           # Commit version bump
           git add package.json
           git commit -m "chore(release): bump version to $newVersion [skip ci]"
           
-          # Create a new tag
-          $tagName = "v$newVersion"
-          git tag $tagName
-          
-          # Push changes using PAT
+          # Create and push a new tag
+          git tag $newVersion
           $repoToken = "${{ secrets.PAT }}"
-          git remote set-url origin https://x-access-token:$repoToken@github.com/robinson-pujara/githubaction-backend.git
+          git remote set-url origin https://x-access-token:$repoToken@github.com/your-username/your-repository.git
           git push origin main
-          git push origin $tagName
+          git push origin $newVersion
         shell: powershell
         env:
           PAT: ${{ secrets.PAT }}
