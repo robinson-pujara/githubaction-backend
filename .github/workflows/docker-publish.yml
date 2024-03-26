@@ -13,30 +13,39 @@ jobs:
     steps:
       - name: Check out the repo
         uses: actions/checkout@v2
-
+      
       - name: Set up Node.js
         uses: actions/setup-node@v2
         with:
           node-version: '20.11.1'
 
-      - name: Manual Version Bump and Tag
+      - name: Bump version, Tag, and Push
         run: |
+          # Set npm and git configuration
           $npmPath = "C:\Program Files\nodejs\npm.cmd"
-          & $npmPath version patch -m "chore(release): bump version to %s [skip ci]"
+          git config user.name "github-actions[bot]"
+          git config user.email "your-email@example.com"
+          
+          # Bump version without auto git tag
+          & $npmPath version patch --no-git-tag-version
           $newVersion = & $npmPath version --silent
-          git config user.name "Automated Version Bump"
-          git config user.email "gh-action-bump-version@users.noreply.github.com"
+          
+          # Commit version bump
           git add package.json
           git commit -m "chore(release): bump version to $newVersion [skip ci]"
-          git tag "v$newVersion"
-          try {
-            git push
-            git push --tags
-          } catch {
-            Write-Error "Git push failed"
-            exit 1
-          }
+          
+          # Create a new tag
+          $tagName = "v$newVersion"
+          git tag $tagName
+          
+          # Push changes using PAT
+          $repoURL = "https://x-access-token:${{ secrets.PAT }}@github.com/robinson-pujara/githubaction-backend.git"
+          git remote set-url origin $repoURL
+          git push origin main
+          git push origin $tagName
         shell: powershell
+        env:
+          PAT: ${{ secrets.PAT }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
@@ -66,4 +75,4 @@ jobs:
           elif [ "$ENVIRONMENT" == "dev" ]; then
             docker tag $DOCKER_IMAGE:$ENVIRONMENT-$VERSION-$GIT_COMMIT_HASH $DOCKER_IMAGE:dev
             docker push $DOCKER_IMAGE:dev
-        shell: bash # Ensure to use bash or the appropriate shell for Docker commands if different from PowerShell.
+        shell: bash
