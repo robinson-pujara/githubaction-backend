@@ -43,7 +43,7 @@ jobs:
 
       - name: Build and Push Docker Image
         run: |
-          DOCKER_IMAGE=<repository>/<image-name> # Replace with your Docker Hub repo/image name
+          DOCKER_IMAGE= robin/githubAction-test
           VERSION=$(npm version --silent)
           GIT_COMMIT_HASH=$(git rev-parse --short HEAD)
           ENVIRONMENT="dev"
