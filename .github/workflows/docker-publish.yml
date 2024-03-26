@@ -25,7 +25,7 @@ jobs:
 
       - name: Bump version and push tag
         id: bump_version
-        uses: phips28/gh-action-bump-version@v6
+        uses: phips28/gh-action-bump-version@v9
         with:
           minor: true # Adjust this based on your versioning strategy (major, minor, patch)
         env:
