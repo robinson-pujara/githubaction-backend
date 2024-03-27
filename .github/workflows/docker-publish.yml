@@ -81,4 +81,4 @@ jobs:
           elif [ "$ENVIRONMENT" == "dev" ]; then
             docker tag $DOCKER_IMAGE:$ENVIRONMENT-$VERSION-$GIT_COMMIT_HASH $DOCKER_IMAGE:dev
             docker push $DOCKER_IMAGE:dev
-        shell: bash
+          fi
