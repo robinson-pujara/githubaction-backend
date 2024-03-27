@@ -25,6 +25,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "robinsonpujara@gmail.com"
           
+          # Bump the version
           $newVersion = & $npmPath version patch --no-git-tag-version
           Write-Host "New version: $newVersion"
           
@@ -72,4 +73,5 @@ jobs:
           } elseif ($ENVIRONMENT -eq "dev") {
             docker tag "${DOCKER_IMAGE}:$ENVIRONMENT-$newVersion-$GIT_COMMIT_HASH" "${DOCKER_IMAGE}:dev"
             docker push "${DOCKER_IMAGE}:dev"
+          }
         shell: powershell
