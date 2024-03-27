@@ -20,39 +20,27 @@ jobs:
           node-version: '20.11.1'
 
       - name: Bump version, Tag, and Push
+        shell: powershell
         run: |
-          # Set npm and git configurations
-          $npmPath = "C:\Program Files\nodejs\npm.cmd"
-          git config user.name "github-actions[bot]"
-          git config user.email "robinsonpujara@gmail.com"
-          
-          # Bump the version
-          $newVersion = & $npmPath version patch --no-git-tag-version
-          
-          # Ensure correct version format for tagging
-          $newVersion = $newVersion -replace '^.*?(\d+\.\d+\.\d+).*$', 'v$1'
-          Write-Host "New version: $newVersion"
-          
-          # Commit the version bump
-          git add package.json
-          git commit -m "chore(release): bump version to $newVersion [skip ci]"
-          
+          # Set npm and git configurations (using PowerShell syntax)
+          Set-ItemProperty -Path "HKCU:\Environment" -Name "npm_config_user_name" -Value "github-actions[bot]"
+          Set-ItemProperty -Path "HKCU:\Environment" -Name "npm_config_user_email" -Value "robinsonpujara@gmail.com"
+
+          # Bump the version (using npm's built-in capabilities)
+          $newVersion = npm version patch --no-git-tag-version --message "chore(release): bump to %s [skip ci]"
+
           # Tagging
-          $tagExists = git tag -l "$newVersion" | Measure-Object | Select-Object -ExpandProperty Count
-          if ($tagExists -eq 0) {
-            git tag $newVersion
-            git push origin $newVersion
+          if (-not (git tag -l "v$newVersion")) { 
+            git tag "v$newVersion"
+            git push origin "v$newVersion"
           } else {
-            Write-Host "Tag $newVersion already exists."
+            Write-Host "Tag v$newVersion already exists."
           }
-          
+
           # Push using PAT for authentication
-          $repoUrl = "https://x-access-token:${{ secrets.PAT }}@github.com/robinson-pujara/githubaction-backend.git"
+          $repoUrl = "https://x-access-token:${{ secrets.PAT }}@github.com/robinson-pujara/githubaction-backend"
           git remote set-url origin $repoUrl
           git push origin main
-        shell: powershell
-        env:
-          PAT: ${{ secrets.PAT }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
@@ -64,23 +52,23 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build and Push Docker Image
-        run: |
-          $DOCKER_IMAGE="robin/githubAction-test"
-          $VERSION=$(npm version --silent)
-          $GIT_COMMIT_HASH=$(git rev-parse --short HEAD)
-          $ENVIRONMENT="dev"
-          if ("${{ github.ref }}" -eq "refs/heads/main") {
-            $ENVIRONMENT="prod"
-          }
-          
-          docker build -t ${DOCKER_IMAGE}:${ENVIRONMENT}-${VERSION}-${GIT_COMMIT_HASH} .
-          docker push ${DOCKER_IMAGE}:${ENVIRONMENT}-${VERSION}-${GIT_COMMIT_HASH}
-          
-          if ($ENVIRONMENT -eq "prod") {
-            docker tag ${DOCKER_IMAGE}:${ENVIRONMENT}-${VERSION}-${GIT_COMMIT_HASH} ${DOCKER_IMAGE}:stable
-            docker push ${DOCKER_IMAGE}:stable
-          } elseif ($ENVIRONMENT -eq "dev") {
-            docker tag ${DOCKER_IMAGE}:${ENVIRONMENT}-${VERSION}-${GIT_COMMIT_HASH} ${DOCKER_IMAGE}:dev
-            docker push ${DOCKER_IMAGE}:dev
-          }
         shell: powershell
+        run: |
+          $DOCKER_IMAGE_LOWERCASE = ("robin/githubaction-test" | Out-String).ToLower()
+          $VERSION = npm version --silent
+          $GIT_COMMIT_HASH = git rev-parse --short HEAD
+          $ENVIRONMENT = "dev"
+          if ("${{ github.ref }}" -eq "refs/heads/main") {
+            $ENVIRONMENT = "prod"
+          }
+
+          docker build -t $DOCKER_IMAGE_LOWERCASE:$ENVIRONMENT-$VERSION-$GIT_COMMIT_HASH .
+          docker push $DOCKER_IMAGE_LOWERCASE:$ENVIRONMENT-$VERSION-$GIT_COMMIT_HASH
+
+          if ($ENVIRONMENT -eq "prod") {
+            docker tag $DOCKER_IMAGE_LOWERCASE:$ENVIRONMENT-$VERSION-$GIT_COMMIT_HASH $DOCKER_IMAGE_LOWERCASE:stable
+            docker push $DOCKER_IMAGE_LOWERCASE:stable
+          } elseif ($ENVIRONMENT -eq "dev") {
+            docker tag $DOCKER_IMAGE_LOWERCASE:$ENVIRONMENT-$VERSION-$GIT_COMMIT_HASH $DOCKER_IMAGE_LOWERCASE:dev
+            docker push $DOCKER_IMAGE_LOWERCASE:dev
+          }
