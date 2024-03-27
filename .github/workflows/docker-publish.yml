@@ -26,17 +26,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "robinsonpujara@gmail.com"
           
-          # Bump the version
-          $npmOutput = & $npmPath version patch --no-git-tag-version
-          $versionRegex = '^\s*[\w-]+:\s*''(\d+\.\d+\.\d+)'''
-          if ($npmOutput -match $versionRegex) {
-            $VERSION = $matches[1]
-          } else {
-            throw "Failed to extract version number from npm version output"
-          }
-          
-          # Ensure correct version format for tagging
-          $newVersion = "v" + $VERSION
+          # Bump the version and directly use the output
+          $newVersion = & $npmPath version patch --no-git-tag-version
           Write-Host "New version: $newVersion"
           
           # Commit the version bump
@@ -44,7 +35,7 @@ jobs:
           git commit -m "chore(release): bump version to $newVersion [skip ci]"
           
           # Tagging
-          if (!(git tag -l | Select-String -Pattern "^$newVersion$")) {
+          if (-not (git tag -l | Select-String -Pattern "^$newVersion$")) {
             git tag $newVersion
             git push origin $newVersion
           } else {
@@ -86,5 +77,4 @@ jobs:
           } elseif ($ENVIRONMENT -eq "dev") {
             docker tag "$DOCKER_IMAGE:$ENVIRONMENT-$newVersion-$GIT_COMMIT_HASH" "$DOCKER_IMAGE:dev"
             docker push "$DOCKER_IMAGE:dev"
-          }
         shell: powershell
