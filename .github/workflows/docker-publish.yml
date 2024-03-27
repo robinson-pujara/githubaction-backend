@@ -21,28 +21,23 @@ jobs:
 
       - name: Bump version, Tag, and Push
         run: |
-          # Set npm and git configurations
           $npmPath = "C:\Program Files\nodejs\npm.cmd"
           git config user.name "github-actions[bot]"
           git config user.email "robinsonpujara@gmail.com"
           
-          # Bump the version and directly use the output
           $newVersion = & $npmPath version patch --no-git-tag-version
           Write-Host "New version: $newVersion"
           
-          # Commit the version bump
           git add package.json
           git commit -m "chore(release): bump version to $newVersion [skip ci]"
           
-          # Tagging
-          if (-not (git tag -l | Select-String -Pattern "^$newVersion$")) {
+          if (!(git tag -l | Select-String -Pattern "^$newVersion$")) {
             git tag $newVersion
             git push origin $newVersion
           } else {
             Write-Host "Tag $newVersion already exists."
           }
           
-          # Push using PAT for authentication
           $repoUrl = "https://x-access-token:${{ secrets.PAT }}@github.com/robinson-pujara/githubaction-backend.git"
           git remote set-url origin $repoUrl
           git push origin main
@@ -61,20 +56,20 @@ jobs:
 
       - name: Build and Push Docker Image
         run: |
-          $DOCKER_IMAGE="robin/githubaction-test"
+          $DOCKER_IMAGE = "robin/githubaction-test"
           $GIT_COMMIT_HASH = git rev-parse --short HEAD
           $ENVIRONMENT = "dev"
           if ("${{ github.ref }}" -eq "refs/heads/main") {
             $ENVIRONMENT = "prod"
           }
           
-          docker build -t "$DOCKER_IMAGE:$ENVIRONMENT-$newVersion-$GIT_COMMIT_HASH" .
-          docker push "$DOCKER_IMAGE:$ENVIRONMENT-$newVersion-$GIT_COMMIT_HASH"
+          docker build -t "${DOCKER_IMAGE}:$ENVIRONMENT-$newVersion-$GIT_COMMIT_HASH" .
+          docker push "${DOCKER_IMAGE}:$ENVIRONMENT-$newVersion-$GIT_COMMIT_HASH"
           
           if ($ENVIRONMENT -eq "prod") {
-            docker tag "$DOCKER_IMAGE:$ENVIRONMENT-$newVersion-$GIT_COMMIT_HASH" "$DOCKER_IMAGE:stable"
-            docker push "$DOCKER_IMAGE:stable"
+            docker tag "${DOCKER_IMAGE}:$ENVIRONMENT-$newVersion-$GIT_COMMIT_HASH" "${DOCKER_IMAGE}:stable"
+            docker push "${DOCKER_IMAGE}:stable"
           } elseif ($ENVIRONMENT -eq "dev") {
-            docker tag "$DOCKER_IMAGE:$ENVIRONMENT-$newVersion-$GIT_COMMIT_HASH" "$DOCKER_IMAGE:dev"
-            docker push "$DOCKER_IMAGE:dev"
+            docker tag "${DOCKER_IMAGE}:$ENVIRONMENT-$newVersion-$GIT_COMMIT_HASH" "${DOCKER_IMAGE}:dev"
+            docker push "${DOCKER_IMAGE}:dev"
         shell: powershell
