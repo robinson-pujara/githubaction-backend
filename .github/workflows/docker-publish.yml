@@ -30,8 +30,10 @@ jobs:
           
           git add package.json
           git commit -m "chore(release): bump version to $newVersion [skip ci]"
-          
-          git tag $newVersion
+
+          if ! git rev-parse -q --verify "refs/tags/$newVersion"; then
+            git tag $newVersion
+          fi
           git push origin $newVersion
           
           git push origin main || git push origin dev
