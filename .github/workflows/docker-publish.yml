@@ -1,60 +1,68 @@
-name: CI to Docker Hub
+name: Build and Push Docker Image
 
-on: push
+on:
+  push:
+    branches:
+      - main
+      - dev
 
 jobs:
-  build:
+  build-and-push:
     runs-on: self-hosted
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-    
-    - name: Set up Docker Buildx
-      id: buildx
-      uses: docker/setup-buildx-action@v1
-    
-    - name: Login to Docker Hub
-      uses: docker/login-action@v1
-      with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
-    
-    - name: Extract metadata (tags, labels) for Docker
-      id: meta
-      uses: docker/metadata-action@v3
-      with:
-        images: robin754/gitaction-backend
-        tags: |
-          type=ref,event=branch
-          type=sha
+      - name: Check out the repo
+        uses: actions/checkout@v2
 
-    - name: Build and push Docker image
-      uses: docker/build-push-action@v2
-      with:
-        context: .
-        file: ./Dockerfile
-        push: true
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '16.20.2'
 
-    - name: Determine environment for tagging
-      id: envtag
-      run: |
-        if [[ "${{ github.ref }}" == "refs/heads/master" ]]; then
-          echo "::set-output name=tag::stable"
-        else
-          echo "::set-output name=tag::dev"
-        fi
+      - name: Bump version, Tag, and Push
+        run: |
+          npm version patch --no-git-tag-version
+          newVersion=$(npm -no-git-tag-version version patch)
+          echo "New version: $newVersion"
+          
+          git config user.name "github-actions[bot]"
+          git config user.email "robinsonpujara@gmail.com"
+          
+          git add package.json
+          git commit -m "chore(release): bump version to $newVersion [skip ci]"
+          
+          git tag $newVersion
+          git push origin $newVersion
+          
+          git push origin main || git push origin dev
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
 
-    - name: Tag and Push to Docker Hub
-      run: |
-        docker tag robin754/gitaction-backend:${{ github.sha }} robin754/gitaction-backend:${{ steps.envtag.outputs.tag }}-${{ github.sha }}
-        docker push robin754/gitaction-backend:${{ steps.envtag.outputs.tag }}-${{ github.sha }}
-      
-    - name: Increment version in package.json
-      if: github.ref != 'refs/heads/master'
-      run: |
-        npm version patch -m "Increment package version [skip ci]"
-        git config --global user.email "robinsonpujara@gmail.com"
-        git config --global user.name "Robinson"
-        git push
+      - name: Login to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and Push Docker Image
+        run: |
+          DOCKER_IMAGE="robin754/gitaction-backend"
+          GIT_COMMIT_HASH=$(git rev-parse --short HEAD)
+          ENVIRONMENT="dev"
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            ENVIRONMENT="prod"
+          fi
+          
+          TAG="${ENVIRONMENT}-$(jq -r .version package.json)-$GIT_COMMIT_HASH"
+          docker build -t $DOCKER_IMAGE:$TAG .
+          docker push $DOCKER_IMAGE:$TAG
+          
+          if [ "$ENVIRONMENT" == "prod" ]; then
+            docker tag $DOCKER_IMAGE:$TAG $DOCKER_IMAGE:stable
+            docker push $DOCKER_IMAGE:stable
+          elif [ "$ENVIRONMENT" == "dev" ]; then
+            docker tag $DOCKER_IMAGE:$TAG $DOCKER_IMAGE:dev
+            docker push $DOCKER_IMAGE:dev
+          fi
+        shell: bash
