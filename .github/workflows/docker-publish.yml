@@ -48,7 +48,7 @@ jobs:
 
     - name: Tag and Push to Docker Hub
       run: |
-        docker tag robin754/gitaction-backend:${{ github.sha }} <repository>/<image-name>:${{ steps.envtag.outputs.tag }}-${{ github.sha }}
+        docker tag robin754/gitaction-backend:${{ github.sha }} robin754/gitaction-backend:${{ steps.envtag.outputs.tag }}-${{ github.sha }}
         docker push robin754/gitaction-backend:${{ steps.envtag.outputs.tag }}-${{ github.sha }}
       
     - name: Increment version in package.json
