@@ -31,19 +31,15 @@ jobs:
           git add package.json
           git commit -m "chore(release): bump version to $newVersion [skip ci]"
           
-          if (-not (git tag -l | Select-String -Pattern "^$newVersion$")) {
-            git tag $newVersion
-            git push origin $newVersion
-          } else {
-            Write-Host "Tag $newVersion already exists."
-          }
+          git tag $newVersion
+          git push origin $newVersion
           
-          $repoUrl = "https://x-access-token:${{ secrets.PAT }}@github.com/robinson-pujara/githubaction-backend.git"
+          $repoUrl = "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/robinson-pujara/githubaction-backend.git"
           git remote set-url origin $repoUrl
           git push origin main
         shell: powershell
         env:
-          PAT: ${{ secrets.PAT }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Login to Docker Hub
         uses: docker/login-action@v1
@@ -69,5 +65,4 @@ jobs:
           } elseif ($ENVIRONMENT -eq "dev") {
             docker tag "${DOCKER_IMAGE}:$ENVIRONMENT-$newVersion-$GIT_COMMIT_HASH" "${DOCKER_IMAGE}:dev"
             docker push "${DOCKER_IMAGE}:dev"
-          }
         shell: powershell
