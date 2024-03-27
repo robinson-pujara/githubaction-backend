@@ -44,7 +44,7 @@ jobs:
           } else {
             Write-Host "Tag $newVersion already exists."
           }
-          
+           
           # Push using PAT for authentication
           $repoUrl = "https://x-access-token:${{ secrets.PAT }}@github.com/robinson-pujara/githubaction-backend"
           git remote set-url origin $repoUrl
