@@ -1,68 +1,60 @@
-name: Build and Push Docker Image
+name: CI to Docker Hub
 
-on:
-  push:
-    branches:
-      - main
-      - dev
+on: push
 
 jobs:
-  build-and-push:
+  build:
     runs-on: self-hosted
-
     steps:
-      - name: Check out the repo
-        uses: actions/checkout@v2
+    - name: Checkout code
+      uses: actions/checkout@v2
+    
+    - name: Set up Docker Buildx
+      id: buildx
+      uses: docker/setup-buildx-action@v1
+    
+    - name: Login to Docker Hub
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKER_HUB_USERNAME }}
+        password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+    
+    - name: Extract metadata (tags, labels) for Docker
+      id: meta
+      uses: docker/metadata-action@v3
+      with:
+        images: robin754/gitaction-backend
+        tags: |
+          type=ref,event=branch
+          type=sha
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v2
-        with:
-          node-version: '20.11.1'
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v2
+      with:
+        context: .
+        file: ./Dockerfile
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
 
-      - name: Bump version, Tag, and Push
-        run: |
-          $npmPath = "C:\Program Files\nodejs\npm.cmd"
-          git config user.name "github-actions[bot]"
-          git config user.email "robinsonpujara@gmail.com"
-          
-          $newVersion = & $npmPath version patch --no-git-tag-version
-          Write-Host "New version: $newVersion"
-          
-          git add package.json
-          git commit -m "chore(release): bump version to $newVersion [skip ci]"
-          
-          git tag $newVersion
-          git push origin $newVersion
-          
-          $repoUrl = "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/robinson-pujara/githubaction-backend.git"
-          git remote set-url origin $repoUrl
-          git push origin main
-        shell: powershell
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Determine environment for tagging
+      id: envtag
+      run: |
+        if [[ "${{ github.ref }}" == "refs/heads/master" ]]; then
+          echo "::set-output name=tag::stable"
+        else
+          echo "::set-output name=tag::dev"
+        fi
 
-      - name: Login to Docker Hub
-        uses: docker/login-action@v1
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Build and Push Docker Image
-        run: |
-          $DOCKER_IMAGE = "robin/githubaction-test"
-          $GIT_COMMIT_HASH = git rev-parse --short HEAD
-          $ENVIRONMENT = "dev"
-          if ("${{ github.ref }}" -eq "refs/heads/main") {
-            $ENVIRONMENT = "prod"
-          }
-          
-          docker build -t "${DOCKER_IMAGE}:$ENVIRONMENT-$newVersion-$GIT_COMMIT_HASH" .
-          docker push "${DOCKER_IMAGE}:$ENVIRONMENT-$newVersion-$GIT_COMMIT_HASH"
-          
-          if ($ENVIRONMENT -eq "prod") {
-            docker tag "${DOCKER_IMAGE}:$ENVIRONMENT-$newVersion-$GIT_COMMIT_HASH" "${DOCKER_IMAGE}:stable"
-            docker push "${DOCKER_IMAGE}:stable"
-          } elseif ($ENVIRONMENT -eq "dev") {
-            docker tag "${DOCKER_IMAGE}:$ENVIRONMENT-$newVersion-$GIT_COMMIT_HASH" "${DOCKER_IMAGE}:dev"
-            docker push "${DOCKER_IMAGE}:dev"
-        shell: powershell
+    - name: Tag and Push to Docker Hub
+      run: |
+        docker tag robin754/gitaction-backend:${{ github.sha }} <repository>/<image-name>:${{ steps.envtag.outputs.tag }}-${{ github.sha }}
+        docker push robin754/gitaction-backend:${{ steps.envtag.outputs.tag }}-${{ github.sha }}
+      
+    - name: Increment version in package.json
+      if: github.ref != 'refs/heads/master'
+      run: |
+        npm version patch -m "Increment package version [skip ci]"
+        git config --global user.email "robinsonpujara@gmail.com"
+        git config --global user.name "Robinson"
+        git push
