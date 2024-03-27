@@ -5,7 +5,7 @@ on:
     branches:
       - main
       - dev
-       
+
 jobs:
   build-and-push:
     runs-on: self-hosted
@@ -22,7 +22,7 @@ jobs:
       - name: Bump version, Tag, and Push
         run: |
           npm version patch --no-git-tag-version
-          newVersion=$(npm -no-git-tag-version version patch)
+          newVersion=$(npm --no-git-tag-version version patch)
           echo "New version: $newVersion"
           
           git config user.name "github-actions[bot]"
@@ -67,4 +67,8 @@ jobs:
             docker tag $DOCKER_IMAGE:$TAG $DOCKER_IMAGE:dev
             docker push $DOCKER_IMAGE:dev
           fi
+        env:
+          DOCKER_IMAGE: ${{ secrets.DOCKER_USERNAME }}/gitaction-backend
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
         shell: bash
