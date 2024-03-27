@@ -5,7 +5,7 @@ on:
     branches:
       - main
       - dev
-
+       
 jobs:
   build-and-push:
     runs-on: self-hosted
@@ -33,8 +33,10 @@ jobs:
 
           if ! git rev-parse -q --verify "refs/tags/$newVersion"; then
             git tag $newVersion
+            git push origin $newVersion
+          else
+            echo "Tag $newVersion already exists. Skipping tag creation and push."
           fi
-          git push origin $newVersion
           
           git push origin main || git push origin dev
         env:
@@ -67,8 +69,4 @@ jobs:
             docker tag $DOCKER_IMAGE:$TAG $DOCKER_IMAGE:dev
             docker push $DOCKER_IMAGE:dev
           fi
-        env:
-          DOCKER_IMAGE: ${{ secrets.DOCKER_USERNAME }}/gitaction-backend
-          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
         shell: bash
